@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driver Shift Form</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #e6f0ed;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background: #ffffff;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      width: 90%;
+      max-width: 960px;
+      overflow-x: auto;
+    }
+    h1 {
+      text-align: center;
+      color: #006d5b;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+    button {
+      background-color: #009688;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+    }
+    button:hover {
+      background-color: #00796b;
+      transform: scale(1.03);
+    }
+    button:active {
+      transform: scale(0.97);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+    th {
+      background-color: #006d5b;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="loginPage">
+  <h1>Driver Login</h1>
+  <input type="text" id="username" placeholder="Username">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="handleLogin()">Login</button>
+</div>
+
+<div class="container" id="formPage" style="display:none;">
+  <h1>Shift Form - Part 1</h1>
+  <input type="date" id="date">
+  <input type="text" id="firstName" placeholder="First Name">
+  <input type="text" id="lastName" placeholder="Last Name">
+  <label>Did you complete the trip inspection form?</label>
+  <select id="inspection">
+    <option value="Yes">Yes</option>
+    <option value="No">No</option>
+  </select>
+  <label>Start Time</label>
+  <input type="time" id="startTime">
+  <select id="startPeriod">
+    <option value="AM">AM</option>
+    <option value="PM">PM</option>
+  </select>
+  <input type="text" id="busNumber" placeholder="Bus Number">
+  <button onclick="submitInitialForm()">Submit</button>
+</div>
+
+<div class="container" id="thankYouPage" style="display:none;">
+  <h1>Thank You!</h1>
+  <p>Your initial form has been submitted.</p>
+  <p><a href="#" onclick="goToCompleteFormPage()">Click here to complete the rest of the form</a></p>
+</div>
+
+<div class="container" id="completeFormPage" style="display:none;">
+  <h1>Complete Your Shift</h1>
+  <label>End Time</label>
+  <input type="time" id="endTime">
+  <select id="endPeriod">
+    <option value="AM">AM</option>
+    <option value="PM">PM</option>
+  </select>
+  <input type="number" id="odometer" placeholder="Odometer Reading">
+  <button onclick="submitFinalForm()">Submit</button>
+</div>
+
+  <div class="container" id="addUserPage" style="display:none;">
+    <h1>Add New Login</h1>
+    <input type="text" id="newUsername" placeholder="New Username (email)">
+    <input type="password" id="newPassword" placeholder="New Password">
+    <button onclick="addNewUser()">Add Login</button>
+    <h2>Submitted Forms:</h2>
+    <div id="submittedData"></div>
+    <button onclick="signOut()">Sign Out</button>
+  </div>
+
+  <script>
+    const masterUser = "ayaan.shivji@gmail.com";
+    const masterPass = "@neymarjr11";
+    const approvedUsers = {
+      [masterUser]: masterPass
+    };
+
+    function getCustomUsers() {
+      return JSON.parse(localStorage.getItem("customUsers") || "{}");
+    }
+
+    function saveCustomUser(username, password) {
+      const users = getCustomUsers();
+      users[username] = password;
+      localStorage.setItem("customUsers", JSON.stringify(users));
+    }
+
+    function handleLogin() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const isMaster = username === masterUser && password === masterPass;
+      const customUsers = getCustomUsers();
+      const isCustomUser = customUsers[username] === password;
+      localStorage.setItem("currentUser", username);
+      if (isMaster) {
+        document.getElementById("loginPage").style.display = "none";
+        document.getElementById("addUserPage").style.display = "block";
+        loadSubmittedData();
+      } else if (isCustomUser) {
+        document.getElementById("loginPage").style.display = "none";
+        document.getElementById("formPage").style.display = "block";
+      } else {
+        alert("Access denied. Only approved users can log in.");
+      }
+    }
+
+    function loadSubmittedData() {
+      const allData = JSON.parse(localStorage.getItem("allForms") || "[]");
+      if (allData.length === 0) {
+        document.getElementById("submittedData").innerHTML = "<p>No submissions yet.</p>";
+        return;
+      }
+      let table = '<table><thead><tr>' +
+        '<th>Username</th><th>Date</th><th>First Name</th><th>Last Name</th>' +
+        '<th>Inspection</th><th>Start Time</th><th>Bus Number</th>' +
+        '<th>End Time</th><th>Odometer</th></tr></thead><tbody>';
+
+      allData.forEach(row => {
+        table += '<tr>' +
+          `<td>${row.username || ''}</td>` +
+          `<td>${row.date || ''}</td>` +
+          `<td>${row.firstName || ''}</td>` +
+          `<td>${row.lastName || ''}</td>` +
+          `<td>${row.inspection || ''}</td>` +
+          `<td>${row.startTime || ''}</td>` +
+          `<td>${row.busNumber || ''}</td>` +
+          `<td>${row.endTime || ''}</td>` +
+          `<td>${row.odometer || ''}</td>` +
+          '</tr>';
+      });
+
+      table += '</tbody></table>';
+      document.getElementById("submittedData").innerHTML = table;
+    }
+
+        function submitInitialForm() {
+      const data = {
+        username: localStorage.getItem("currentUser"),
+        date: document.getElementById("date").value,
+        firstName: document.getElementById("firstName").value,
+        lastName: document.getElementById("lastName").value,
+        inspection: document.getElementById("inspection").value,
+        startTime: document.getElementById("startTime").value + ' ' + document.getElementById("startPeriod").value,
+        busNumber: document.getElementById("busNumber").value
+      };
+      localStorage.setItem("partialForm", JSON.stringify(data));
+      document.getElementById("formPage").style.display = "none";
+      document.getElementById("thankYouPage").style.display = "block";
+    }
+
+    function goToCompleteFormPage() {
+      document.getElementById("thankYouPage").style.display = "none";
+      document.getElementById("completeFormPage").style.display = "block";
+    }
+
+    function submitFinalForm() {
+  const data = JSON.parse(localStorage.getItem("partialForm") || "{}");
+  data.endTime = document.getElementById("endTime").value + ' ' + document.getElementById("endPeriod").value;
+  data.odometer = document.getElementById("odometer").value;
+
+  // Save to localStorage for admin view
+  let allData = JSON.parse(localStorage.getItem("allForms") || "[]");
+  allData.push(data);
+  localStorage.setItem("allForms", JSON.stringify(allData));
+
+  // Send to Google Sheets Web App
+  fetch("https://webhook.site/a40368ab-3bdd-4c44-a1ed-acadb52e42b8", {
+    method: "POST",
+    body: JSON.stringify(data),
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+
+  localStorage.removeItem("partialForm");
+      signOut();
+      alert("Form fully submitted. You have been signed out.");
+    }
+
+    function signOut() {
+      document.getElementById("loginPage").style.display = "block";
+      document.getElementById("formPage").style.display = "none";
+      document.getElementById("thankYouPage").style.display = "none";
+      document.getElementById("completeFormPage").style.display = "none";
+      document.getElementById("addUserPage").style.display = "none";
+      document.getElementById("username").value = "";
+      document.getElementById("password").value = "";
+      localStorage.removeItem("currentUser");
+    }
+
+    function addNewUser() {
+      const newUsername = document.getElementById("newUsername").value.trim();
+      const newPassword = document.getElementById("newPassword").value.trim();
+      if (newUsername && newPassword) {
+        saveCustomUser(newUsername, newPassword);
+        alert("New login added successfully!");
+        document.getElementById("newUsername").value = "";
+        document.getElementById("newPassword").value = "";
+      } else {
+        alert("Please enter both username and password.");
+      }
+    }
+  </script>
+</body>
+</html>
