@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driver Shift Form</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #e6f0ed;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background: #ffffff;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      width: 360px;
+      max-width: 90%;
+    }
+    h1 {
+      text-align: center;
+      color: #006d5b;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+    button {
+      background-color: #009688;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+    }
+    button:hover {
+      background-color: #00796b;
+      transform: scale(1.03);
+    }
+    button:active {
+      transform: scale(0.97);
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="loginPage">
+    <h1>Driver Login</h1>
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="handleLogin()">Login</button>
+  </div>
+
+  <div class="container" id="adminPage" style="display:none;">
+    <h1>Admin Dashboard</h1>
+    <input type="text" id="newUsername" placeholder="New Username">
+    <input type="password" id="newPassword" placeholder="New Password">
+    <button onclick="addNewUser()">Add Login</button>
+    <h2>Saved Logins:</h2>
+    <ul id="loginList"></ul>
+    <button onclick="signOut()">Sign Out</button>
+  </div>
+
+  <div class="container" id="formPage" style="display:none;">
+    <h1>Driver Shift Form</h1>
+    <input type="date" id="date" required>
+    <input type="text" id="firstName" placeholder="First Name" required>
+    <input type="text" id="lastName" placeholder="Last Name" required>
+    <label>Did you complete the trip inspection form?</label>
+    <select id="inspection" required>
+      <option value="">Select...</option>
+      <option value="Yes">Yes</option>
+      <option value="No">No</option>
+    </select>
+    <label>Start Time</label>
+    <input type="time" id="startTime" required>
+    <input type="text" id="busNumber" placeholder="Bus Number" required>
+    <input type="number" id="pickupOdometer" placeholder="Odometer When Picking Up" required>
+    <button onclick="submitInitialForm()">Submit</button>
+  </div>
+
+  <div class="container" id="thankYouPage" style="display:none;">
+    <h1>Thank You!</h1>
+    <p>Your initial form has been submitted.</p>
+    <p><a href="#" onclick="goToCompleteFormPage()">Click here to complete the rest of the form</a></p>
+  </div>
+
+  <div class="container" id="completeFormPage" style="display:none;">
+    <h1>Complete Your Shift</h1>
+    <label>End Time</label>
+    <input type="time" id="endTime" required>
+    <input type="number" id="odometer" placeholder="Odometer When Returning" required>
+    <button onclick="submitFinalForm()">Submit</button>
+  </div>
+
+  <script>
+    const masterUser = "ayaan.shivji@gmail.com";
+    const masterPass = "@neymarjr11";
+    const loginBinId = "67eda55f8a456b79668166a0";
+    const loginApiUrl = `https://api.jsonbin.io/v3/b/${loginBinId}`;
+    const formBinId = "67eda9238960c979a57d3090";
+    const formApiUrl = `https://api.jsonbin.io/v3/b/${formBinId}`;
+    const apiKey = "$2a$10$L0EinoeoCZetYkNGOEYAJepJVVGc3VUos/9hI.BR2SLO9QIfHHGWe";
+
+    async function getStoredUsers() {
+      const res = await fetch(loginApiUrl, {
+        headers: { 'X-Master-Key': apiKey }
+      });
+      const json = await res.json();
+      return json.record.users || {};
+    }
+
+    async function saveUsers(users) {
+      await fetch(loginApiUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': apiKey
+        },
+        body: JSON.stringify({ users })
+      });
+    }
+
+    async function handleLogin() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (username === masterUser && password === masterPass) {
+        document.getElementById("loginPage").style.display = "none";
+        document.getElementById("adminPage").style.display = "block";
+        renderLogins();
+        return;
+      }
+
+      const users = await getStoredUsers();
+      if (users[username] && users[username] === password) {
+        localStorage.setItem("currentUser", username);
+        document.getElementById("loginPage").style.display = "none";
+        document.getElementById("formPage").style.display = "block";
+      } else {
+        alert("Invalid login. Please try again.");
+      }
+    }
+
+    async function addNewUser() {
+      const newUsername = document.getElementById("newUsername").value.trim();
+      const newPassword = document.getElementById("newPassword").value.trim();
+      if (!newUsername || !newPassword) return alert("Enter both username and password.");
+
+      const users = await getStoredUsers();
+      users[newUsername] = newPassword;
+      await saveUsers(users);
+      renderLogins();
+      alert("Login saved!");
+      document.getElementById("newUsername").value = "";
+      document.getElementById("newPassword").value = "";
+    }
+
+    async function renderLogins() {
+      const users = await getStoredUsers();
+      const list = document.getElementById("loginList");
+      list.innerHTML = "";
+      for (let user in users) {
+        const li = document.createElement("li");
+        li.textContent = `${user}: ${users[user]}`;
+        list.appendChild(li);
+      }
+    }
+
+    function submitInitialForm() {
+      const data = {
+        username: localStorage.getItem("currentUser"),
+        date: document.getElementById("date").value,
+        firstName: document.getElementById("firstName").value,
+        lastName: document.getElementById("lastName").value,
+        inspection: document.getElementById("inspection").value,
+        startTime: document.getElementById("startTime").value,
+        busNumber: document.getElementById("busNumber").value,
+        pickupOdometer: document.getElementById("pickupOdometer").value
+      };
+      localStorage.setItem("partialForm", JSON.stringify(data));
+      document.getElementById("formPage").style.display = "none";
+      document.getElementById("thankYouPage").style.display = "block";
+    }
+
+    function goToCompleteFormPage() {
+      document.getElementById("thankYouPage").style.display = "none";
+      document.getElementById("completeFormPage").style.display = "block";
+    }
+
+    async function submitFinalForm() {
+      const endTime = document.getElementById("endTime").value;
+      const odometer = document.getElementById("odometer").value;
+      if (!endTime || !odometer) {
+        alert("Please complete all required fields.");
+        return;
+      }
+      const data = JSON.parse(localStorage.getItem("partialForm") || "{}");
+      data.endTime = endTime;
+      data.returnOdometer = odometer;
+
+      const res = await fetch(formApiUrl, {
+        headers: { 'X-Master-Key': apiKey }
+      });
+      const json = await res.json();
+      const allData = json.record.submissions || [];
+      allData.push(data);
+      await fetch(formApiUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': apiKey
+        },
+        body: JSON.stringify({ submissions: allData })
+      });
+
+      localStorage.removeItem("partialForm");
+      signOut();
+      alert("Form fully submitted. You have been signed out.");
+    }
+
+    function signOut() {
+      document.getElementById("loginPage").style.display = "block";
+      document.getElementById("formPage").style.display = "none";
+      document.getElementById("thankYouPage").style.display = "none";
+      document.getElementById("completeFormPage").style.display = "none";
+      document.getElementById("adminPage").style.display = "none";
+      document.getElementById("username").value = "";
+      document.getElementById("password").value = "";
+      localStorage.removeItem("currentUser");
+    }
+  </script>
+</body>
+</html>
